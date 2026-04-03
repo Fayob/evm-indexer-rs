@@ -77,4 +77,40 @@ impl RpcClient {
             .result
             .ok_or_else(|| IndexerError::RpcMissingResult(method.to_string()))
     }
+
+    /// Fetch the current block number from the node.
+    pub async fn get_block_number(&self) -> Result<u64> {
+        let value = self.call("eth_blockNumber", serde_json::json!([])).await?;
+        let hex = value
+            .as_str()
+            .ok_or_else(|| IndexerError::RpcMissingResult("eth_blockNumber".into()))?;
+        let stripped = hex.strip_prefix("0x").unwrap_or(hex);
+        u64::from_str_radix(stripped, 16)
+            .map_err(|e| IndexerError::RpcMissingResult(format!("block number parse: {e}")))
+    }
+
+    /// Fetch a full block by number, including full transaction objects.
+    ///
+    /// Returns None if the block doesn't exist yet — this happens
+    /// when we request a block ahead of the chain tip.
+    pub async fn get_block_by_number(
+        &self,
+        block_number: u64,
+    ) -> Result<Option<crate::rpc::types::Block>> {
+        let hex = format!("0x{block_number:x}");
+        // Second param `true` means return full tx objects, not just hashes.
+        let value = self
+            .call("eth_getBlockByNumber", serde_json::json!([hex, true]))
+            .await?;
+
+        if value.is_null() {
+            return Ok(None);
+        }
+
+        let block = serde_json::from_value(value).map_err(|e| {
+            IndexerError::RpcMissingResult(format!("block deserialize: {e}"))
+        })?;
+
+        Ok(Some(block))
+    }
 }

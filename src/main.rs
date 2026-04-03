@@ -8,10 +8,19 @@ async fn main() -> error::Result<()> {
 
     let client = RpcClient::new(config.rpc_url);
 
-    let block_number = client
-        .call("eth_blockNumber", serde_json::json!([]))
-        .await?;
-    println!("Latest block: {}", block_number);
+    let block_number = client.get_block_number().await?;
+    println!("Latest block number: {block_number}");
+
+    let block = client.get_block_by_number(block_number).await?;
+    match block {
+        Some(b) => println!(
+            "Block #{}: hash={}, txs={}",
+            b.number,
+            b.hash,
+            b.transactions.len()
+        ),
+        None => println!("Block not found"),
+    }
 
     Ok(())
 }
