@@ -16,6 +16,9 @@ pub enum IndexerError {
     /// HTTP transport failure — connection refused, timeout, DNS failure.
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
+
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
 }
 
 pub type Result<T> = std::result::Result<T, IndexerError>;
