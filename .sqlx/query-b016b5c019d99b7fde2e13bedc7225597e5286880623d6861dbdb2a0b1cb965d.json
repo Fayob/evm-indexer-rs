@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO indexer_state (id, last_indexed_block)\n         VALUES (1, $1)\n         ON CONFLICT (id) DO UPDATE SET last_indexed_block = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b016b5c019d99b7fde2e13bedc7225597e5286880623d6861dbdb2a0b1cb965d"
+}
