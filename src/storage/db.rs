@@ -1,6 +1,6 @@
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::{error::Result, rpc::types::{Block, Log}};
+use crate::{error::Result, rpc::types::{Block, Log}, storage::model::Contract};
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     let pool = PgPoolOptions::new()
@@ -104,4 +104,36 @@ pub async fn save_block(pool: &PgPool, block: &Block, logs: &[Log]) -> Result<()
     tx.commit().await?;
 
     Ok(())
+}
+
+/// Register a contract for indexing.
+///
+/// On conflict we do nothing — registering the same address
+/// twice is idempotent. The user gets no error, the existing
+/// record is preserved.
+pub async fn save_contract(pool: &PgPool, contract: &Contract) -> Result<()> {
+    sqlx::query(
+        "INSERT INTO contracts (address, name, abi)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (address) DO NOTHING"
+    )
+    .bind(&contract.address)
+    .bind(&contract.name)
+    .bind(&contract.abi)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Load all registered contracts from the database.
+/// Called at fetcher startup and periodically during the index loop.
+pub async fn load_contracts(pool: &PgPool) -> Result<Vec<Contract>> {
+    let rows = sqlx::query_as::<_, Contract>(
+        "SELECT address, name, abi FROM contracts"
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
 }
