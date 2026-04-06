@@ -12,11 +12,11 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
 }
 
 pub async fn run_migration(pool: &PgPool) -> Result<()> {
-    sqlx::query(include_str!("../../migrations/001_initial_schema.sql"))
+    sqlx::raw_sql(include_str!("../../migrations/001_initial_schema.sql"))
         .execute(pool)
         .await?;
 
-    sqlx::query(include_str!("../../migrations/002_contracts.sql"))
+    sqlx::raw_sql(include_str!("../../migrations/002_contracts.sql"))
         .execute(pool)
         .await?;
 
