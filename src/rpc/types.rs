@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Deserialize a hex-encoded string like "0x1b4" into a u64.
 ///
@@ -108,4 +108,15 @@ pub struct Log {
 
     #[serde(deserialize_with = "deserialize_hex_u64")]
     pub log_index: u64,
+}
+
+/// Filter parameter for eth_getLogs.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogFilter {
+    pub from_block: String,
+    pub to_block: String,
+    /// List of contract addresses to filter by.
+    /// Empty means all contracts — we always provide this.
+    pub address: Vec<String>,
 }

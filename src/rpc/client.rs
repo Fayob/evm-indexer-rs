@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 
-use crate::error::{IndexerError, Result};
+use crate::{error::{IndexerError, Result}, rpc::types::{Log, LogFilter}};
 
 #[derive(Debug, Serialize)]
 struct RpcRequest<'a, P: Serialize> {
@@ -112,5 +112,22 @@ impl RpcClient {
         })?;
 
         Ok(Some(block))
+    }
+
+    /// Fetch all logs matching the given filter.
+    ///
+    /// Most RPC providers
+    /// cap the response at 10,000 logs per call — if we hit that
+    /// limit we need to reduce the block range. We handle that
+    /// in the fetcher layer.
+    pub async fn get_logs(&self, filter: &LogFilter) -> Result<Vec<Log>> {
+        let value = self.call("eth_getLogs", json!([filter]))
+            .await?;
+
+        let logs = serde_json::from_value(value).map_err(|e| {
+            IndexerError::RpcMissingResult(format!("logs deserialize: {e}"))
+        })?;
+
+        Ok(logs)
     }
 }

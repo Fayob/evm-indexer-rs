@@ -137,3 +137,16 @@ pub async fn load_contracts(pool: &PgPool) -> Result<Vec<Contract>> {
 
     Ok(rows)
 }
+
+/// Fetch the stored hash for a given block number.
+/// Used for reorg detection.
+pub async fn get_block_hash(pool: &PgPool, block_number: u64) -> Result<Option<String>> {
+    let row = sqlx::query_scalar(
+        "SELECT hash FROM blocks WHERE number = $1"
+    )
+    .bind(block_number as i64)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}

@@ -19,6 +19,13 @@ pub enum IndexerError {
 
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
+
+    #[error("Reorg detected at block {block_number}: expected parent {expected}, got {actual}")]
+    ReorgDetected {
+        block_number: u64,
+        expected: String,
+        actual: String,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, IndexerError>;
