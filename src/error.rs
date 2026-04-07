@@ -26,6 +26,9 @@ pub enum IndexerError {
         expected: String,
         actual: String,
     },
+
+    #[error("ABI parse error: {0}")]
+    AbiParse(String)
 }
 
 pub type Result<T> = std::result::Result<T, IndexerError>;
