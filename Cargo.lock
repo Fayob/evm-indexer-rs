@@ -296,6 +296,7 @@ name = "evm-indexer"
 version = "0.1.0"
 dependencies = [
  "dotenvy",
+ "hex",
  "reqwest",
  "serde",
  "serde_json",

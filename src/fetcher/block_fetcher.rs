@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::{config::Config, error::{IndexerError, Result}, rpc::{client::RpcClient, types::{Block, LogFilter}}, storage::db};
+use crate::{config::Config, decoder::log_decoder::EventRegistry, error::{IndexerError, Result}, rpc::{client::RpcClient, types::{Block, LogFilter}}, storage::db};
 
 /// How often the fetcher pauses when it has caught up to the tip.
 const POLL_INTERVAL_SECS: u64 = 12;
@@ -31,6 +31,8 @@ impl BlockFetcher {
     /// are returned immediately — the caller decides whether to restart.
     pub async fn run(&self) -> Result<()> {
         let mut contracts = db::load_contracts(&self.pool).await?;
+        let mut registry = EventRegistry::from_contracts(&contracts)?;
+
 
         let start = match db::get_last_indexed_block(&self.pool).await? {
             Some(n) => {
@@ -97,13 +99,20 @@ impl BlockFetcher {
                 self.client.get_logs(&filter).await?
             };
 
+            let decoded: Vec<_> = logs
+                .iter()
+                .filter_map(|log| registry.decode_log(log).transpose())
+                .collect::<Result<_>>()?;
+
             db::save_block(&self.pool, &block, &logs).await?;
+            db::save_decoded_events(&self.pool, &decoded).await?;
 
             println!(
-                "Indexed block {} | txs: {} | logs: {}",
+                "Indexed block {} | txs: {} | logs: {} | decoded: {}",
                 block.number,
                 block.transactions.len(),
-                logs.len()
+                logs.len(),
+                decoded.len()
             );
 
             current += 1;

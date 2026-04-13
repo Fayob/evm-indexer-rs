@@ -28,7 +28,10 @@ pub enum IndexerError {
     },
 
     #[error("ABI parse error: {0}")]
-    AbiParse(String)
+    AbiParse(String),
+
+    #[error("Log decode error: {0}")]
+    LogDecode(String),
 }
 
 pub type Result<T> = std::result::Result<T, IndexerError>;

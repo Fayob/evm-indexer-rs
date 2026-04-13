@@ -1,6 +1,6 @@
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::{error::Result, rpc::types::{Block, Log}, storage::model::Contract};
+use crate::{decoder::log_decoder::DecodedEvent, error::Result, rpc::types::{Block, Log}, storage::models::Contract};
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     let pool = PgPoolOptions::new()
@@ -17,6 +17,10 @@ pub async fn run_migration(pool: &PgPool) -> Result<()> {
         .await?;
 
     sqlx::raw_sql(include_str!("../../migrations/002_contracts.sql"))
+        .execute(pool)
+        .await?;
+
+    sqlx::raw_sql(include_str!("../../migrations/003_decoded_events.sql"))
         .execute(pool)
         .await?;
 
@@ -149,4 +153,30 @@ pub async fn get_block_hash(pool: &PgPool, block_number: u64) -> Result<Option<S
     .await?;
 
     Ok(row)
+}
+
+pub async fn save_decoded_events(
+    pool: &PgPool,
+    events: &[DecodedEvent],
+) -> Result<()> {
+    for event in events {
+        sqlx::query(
+            "INSERT INTO decoded_events
+                (contract_address, contract_name, event_name,
+                 block_number, transaction_hash, log_index, parameters)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (transaction_hash, log_index) DO NOTHING"
+        )
+        .bind(&event.contract_address)
+        .bind(&event.contract_name)
+        .bind(&event.event_name)
+        .bind(event.block_number as i64)
+        .bind(&event.transaction_hash)
+        .bind(event.log_index as i64)
+        .bind(&event.parameters)
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
 }
