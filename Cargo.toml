@@ -13,3 +13,4 @@ dotenvy = "0.15"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "json"] }
 tiny-keccak = { version = "2", features = ["keccak"] }
 hex = "0.4"
+axum = "0.7"
