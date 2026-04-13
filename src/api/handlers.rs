@@ -1,11 +1,11 @@
 use axum::{Json, extract::State, response::IntoResponse};
 use reqwest::StatusCode;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use crate::{error::IndexerError, storage::db};
+use crate::{error::IndexerError, storage::{db, models::Contract}};
 
-struct ApiError(IndexerError);
+pub struct ApiError(IndexerError);
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
@@ -47,3 +47,26 @@ pub async fn list_contracts(State(pool): State<PgPool>) -> ApiResult<impl IntoRe
         Ok(Json(response))
 }
 
+/// Request body for registering a new contract.
+#[derive(Deserialize)]
+pub struct RegisterContractRequest {
+    pub address: String,
+    pub name: String,
+    pub abi: serde_json::Value,
+}
+
+/// Register a new contract for indexing.
+pub async fn register_contract(
+    State(pool): State<PgPool>,
+    Json(body): Json<RegisterContractRequest>,
+) -> ApiResult<impl IntoResponse> {
+    let contract = Contract {
+        address: body.address.to_lowercase(),
+        name: body.name,
+        abi: body.abi,
+    };
+
+    db::save_contract(&pool, &contract).await?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "status": "registered" }))))
+}
