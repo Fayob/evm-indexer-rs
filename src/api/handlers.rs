@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, response::IntoResponse};
+use axum::{Json, extract::{Query, State}, response::IntoResponse};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -20,6 +20,12 @@ impl IntoResponse for ApiError {
 impl From<IndexerError> for ApiError {
     fn from(err: IndexerError) -> Self {
         Self(err)
+    }
+}
+
+impl From<sqlx::Error> for ApiError {
+    fn from(err: sqlx::Error) -> Self {
+        Self(IndexerError::from(err))
     }
 }
 
@@ -69,4 +75,48 @@ pub async fn register_contract(
     db::save_contract(&pool, &contract).await?;
 
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "status": "registered" }))))
+}
+
+/// Query parameters for the events endpoint.
+#[derive(Deserialize)]
+pub struct EventsQuery {
+    pub contract: Option<String>,
+    pub event: Option<String>,
+    pub limit: Option<i64>,
+}
+
+/// List decoded events with optional filtering.
+pub async fn list_events(
+    State(pool): State<PgPool>,
+    Query(params): Query<EventsQuery>,
+) -> ApiResult<impl IntoResponse> {
+    let limit = params.limit.unwrap_or(50).min(500); // Max limit of 500
+
+    let rows = sqlx::query_as::<_,DecodedEventRow>(
+        "SELECT contract_address, contract_name, event_name,
+                block_number, transaction_hash, log_index, parameters
+         FROM decoded_events
+         WHERE ($1::text IS NULL OR contract_address = $1)
+           AND ($2::text IS NULL OR event_name = $2)
+         ORDER BY block_number DESC, log_index DESC
+         LIMIT $3"
+    )
+    .bind(params.contract.as_deref())
+    .bind(params.event.as_deref())
+    .bind(limit)
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(rows))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct DecodedEventRow {
+    pub contract_address: String,
+    pub contract_name: String,
+    pub event_name: String,
+    pub block_number: i64,
+    pub transaction_hash: String,
+    pub log_index: i64,
+    pub parameters: serde_json::Value,
 }
