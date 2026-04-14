@@ -3,7 +3,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use crate::{error::IndexerError, storage::{db, models::Contract}};
+use crate::{error::IndexerError, storage::{db, models::{Contract}}};
 
 pub struct ApiError(IndexerError);
 
@@ -92,31 +92,13 @@ pub async fn list_events(
 ) -> ApiResult<impl IntoResponse> {
     let limit = params.limit.unwrap_or(50).min(500); // Max limit of 500
 
-    let rows = sqlx::query_as::<_,DecodedEventRow>(
-        "SELECT contract_address, contract_name, event_name,
-                block_number, transaction_hash, log_index, parameters
-         FROM decoded_events
-         WHERE ($1::text IS NULL OR contract_address = $1)
-           AND ($2::text IS NULL OR event_name = $2)
-         ORDER BY block_number DESC, log_index DESC
-         LIMIT $3"
+    let rows = db::get_decoded_events(
+        &pool, 
+        params.contract.as_deref(), 
+        params.event.as_deref(), 
+        limit
     )
-    .bind(params.contract.as_deref())
-    .bind(params.event.as_deref())
-    .bind(limit)
-    .fetch_all(&pool)
     .await?;
 
     Ok(Json(rows))
-}
-
-#[derive(Serialize, sqlx::FromRow)]
-pub struct DecodedEventRow {
-    pub contract_address: String,
-    pub contract_name: String,
-    pub event_name: String,
-    pub block_number: i64,
-    pub transaction_hash: String,
-    pub log_index: i64,
-    pub parameters: serde_json::Value,
 }

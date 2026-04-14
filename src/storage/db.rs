@@ -1,6 +1,6 @@
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::{decoder::log_decoder::DecodedEvent, error::Result, rpc::types::{Block, Log}, storage::models::Contract};
+use crate::{decoder::log_decoder::DecodedEvent, error::Result, rpc::types::{Block, Log}, storage::models::{Contract, DecodedEventRow}};
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     let pool = PgPoolOptions::new()
@@ -179,4 +179,28 @@ pub async fn save_decoded_events(
     }
 
     Ok(())
+}
+
+pub async fn get_decoded_events(
+    pool: &PgPool,
+    contract: Option<&str>,
+    event_name: Option<&str>,
+    limit: i64
+) -> Result<Vec<DecodedEventRow>> {
+    let rows = sqlx::query_as::<_,DecodedEventRow>(
+        "SELECT contract_address, contract_name, event_name,
+                block_number, transaction_hash, log_index, parameters
+         FROM decoded_events
+         WHERE ($1::text IS NULL OR contract_address = $1)
+           AND ($2::text IS NULL OR event_name = $2)
+         ORDER BY block_number DESC, log_index DESC
+         LIMIT $3"
+    )
+    .bind(contract)
+    .bind(event_name)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
 }

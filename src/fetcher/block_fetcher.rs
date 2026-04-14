@@ -31,7 +31,7 @@ impl BlockFetcher {
     /// are returned immediately — the caller decides whether to restart.
     pub async fn run(&self) -> Result<()> {
         let mut contracts = db::load_contracts(&self.pool).await?;
-        let mut registry = EventRegistry::from_contracts(&contracts)?;
+        let registry = EventRegistry::from_contracts(&contracts)?;
 
 
         let start = match db::get_last_indexed_block(&self.pool).await? {
