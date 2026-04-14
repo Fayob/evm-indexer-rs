@@ -1,4 +1,11 @@
-use evm_indexer::{config::Config, error, fetcher::block_fetcher::BlockFetcher, rpc::client::RpcClient, storage};
+use evm_indexer::{
+    api,
+    config::Config,
+    error::{self, IndexerError},
+    fetcher::block_fetcher::BlockFetcher,
+    rpc::client::RpcClient,
+    storage,
+};
 
 #[tokio::main]
 async fn main() -> error::Result<()> {
@@ -48,10 +55,17 @@ async fn main() -> error::Result<()> {
 
     storage::db::save_contract(&pool, &usdc).await?;
     println!("USDC contract registered");
+    let api_port = config.api_port;
+    let api_pool = pool.clone();
 
     let fetcher = BlockFetcher::new(client, pool, config);
 
-    fetcher.run().await?;
+    let fetcher_handle = tokio::spawn(async move { fetcher.run().await });
+
+    let api_handle = tokio::spawn(async move { api::server::run(api_pool, api_port).await });
+
+    tokio::try_join!(fetcher_handle, api_handle)
+        .map_err(|e| IndexerError::JoinFuture(e))?.0?;
 
     Ok(())
 }

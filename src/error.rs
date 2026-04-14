@@ -32,6 +32,9 @@ pub enum IndexerError {
 
     #[error("Log decode error: {0}")]
     LogDecode(String),
+
+    #[error("Task join error: {0}")]
+    JoinFuture(#[from] tokio::task::JoinError),
 }
 
 pub type Result<T> = std::result::Result<T, IndexerError>;

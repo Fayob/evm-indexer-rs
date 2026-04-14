@@ -8,6 +8,7 @@ pub struct Config {
     pub database_url: String,
     pub start_block: u64,
     pub confirmation_depth: u64,
+    pub api_port: u16,
 }
 
 impl Config {
@@ -17,6 +18,7 @@ impl Config {
             database_url: require("DATABASE_URL")?,
             start_block: 21000000,
             confirmation_depth: 12,
+            api_port: parse(&std::env::vars().collect(), "API_PORT", "3000")?,
         })
     }
 }
