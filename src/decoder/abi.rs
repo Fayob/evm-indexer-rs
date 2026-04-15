@@ -33,7 +33,6 @@ pub enum AbiEntry {
     Other,
 }
 
-
 /// Compute the keccak256 selector for an event.
 ///
 /// The selector is keccak256 of the canonical event signature.
@@ -71,8 +70,8 @@ pub fn keccak256(data: &[u8]) -> [u8; 32] {
 
 /// Parse a JSON ABI value into a list of ABI events.
 pub fn parse_abi_events(abi: &serde_json::Value) -> Result<Vec<AbiEvent>> {
-    let entries: Vec<AbiEntry> = serde_json::from_value(abi.clone())
-        .map_err(|e| IndexerError::AbiParse(e.to_string()))?;
+    let entries: Vec<AbiEntry> =
+        serde_json::from_value(abi.clone()).map_err(|e| IndexerError::AbiParse(e.to_string()))?;
 
     let events = entries
         .into_iter()

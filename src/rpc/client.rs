@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::{error::{IndexerError, Result}, rpc::types::{Log, LogFilter}};
+use crate::{
+    error::{IndexerError, Result},
+    rpc::types::{Log, LogFilter},
+};
 
 #[derive(Debug, Serialize)]
 struct RpcRequest<'a, P: Serialize> {
@@ -46,9 +49,7 @@ impl RpcClient {
     }
 
     pub async fn call<P: Serialize>(&self, method: &str, params: P) -> Result<Value> {
-        let id = self
-            .id
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let id = self.id.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         let request = RpcRequest {
             jsonrpc: "2.0",
@@ -107,9 +108,8 @@ impl RpcClient {
             return Ok(None);
         }
 
-        let block = serde_json::from_value(value).map_err(|e| {
-            IndexerError::RpcMissingResult(format!("block deserialize: {e}"))
-        })?;
+        let block = serde_json::from_value(value)
+            .map_err(|e| IndexerError::RpcMissingResult(format!("block deserialize: {e}")))?;
 
         Ok(Some(block))
     }
@@ -121,12 +121,10 @@ impl RpcClient {
     /// limit we need to reduce the block range. We handle that
     /// in the fetcher layer.
     pub async fn get_logs(&self, filter: &LogFilter) -> Result<Vec<Log>> {
-        let value = self.call("eth_getLogs", json!([filter]))
-            .await?;
+        let value = self.call("eth_getLogs", json!([filter])).await?;
 
-        let logs = serde_json::from_value(value).map_err(|e| {
-            IndexerError::RpcMissingResult(format!("logs deserialize: {e}"))
-        })?;
+        let logs = serde_json::from_value(value)
+            .map_err(|e| IndexerError::RpcMissingResult(format!("logs deserialize: {e}")))?;
 
         Ok(logs)
     }

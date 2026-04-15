@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// JSON-RPC spec. We decode at the boundary so the rest
 /// of the codebase never sees raw hex.
 fn deserialize_hex_u64<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
-where 
+where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
@@ -16,9 +16,7 @@ where
 
 /// Deserialize an optional hex-encoded u64.
 /// Some fields like `to` on a contract creation tx are null.
-fn deserialize_hex_u64_opt<'de, D>(
-    deserializer: D,
-) -> std::result::Result<Option<u64>, D::Error>
+fn deserialize_hex_u64_opt<'de, D>(deserializer: D) -> std::result::Result<Option<u64>, D::Error>
 where
     D: Deserializer<'de>,
 {

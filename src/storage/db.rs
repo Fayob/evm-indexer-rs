@@ -1,6 +1,11 @@
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::{decoder::log_decoder::DecodedEvent, error::Result, rpc::types::{Block, Log}, storage::models::{Contract, DecodedEventRow}};
+use crate::{
+    decoder::log_decoder::DecodedEvent,
+    error::Result,
+    rpc::types::{Block, Log},
+    storage::models::{Contract, DecodedEventRow},
+};
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     let pool = PgPoolOptions::new()
@@ -28,11 +33,9 @@ pub async fn run_migration(pool: &PgPool) -> Result<()> {
 }
 
 pub async fn get_last_indexed_block(pool: &PgPool) -> Result<Option<u64>> {
-    let row = sqlx::query_scalar!(
-        "SELECT last_indexed_block FROM indexer_state WHERE id = 1"
-    )
-    .fetch_optional(pool)
-    .await?;
+    let row = sqlx::query_scalar!("SELECT last_indexed_block FROM indexer_state WHERE id = 1")
+        .fetch_optional(pool)
+        .await?;
 
     Ok(row.map(|n: i64| n as u64))
 }
@@ -119,7 +122,7 @@ pub async fn save_contract(pool: &PgPool, contract: &Contract) -> Result<()> {
     sqlx::query(
         "INSERT INTO contracts (address, name, abi)
          VALUES ($1, $2, $3)
-         ON CONFLICT (address) DO NOTHING"
+         ON CONFLICT (address) DO NOTHING",
     )
     .bind(&contract.address)
     .bind(&contract.name)
@@ -133,11 +136,9 @@ pub async fn save_contract(pool: &PgPool, contract: &Contract) -> Result<()> {
 /// Load all registered contracts from the database.
 /// Called at fetcher startup and periodically during the index loop.
 pub async fn load_contracts(pool: &PgPool) -> Result<Vec<Contract>> {
-    let rows = sqlx::query_as::<_, Contract>(
-        "SELECT address, name, abi FROM contracts"
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query_as::<_, Contract>("SELECT address, name, abi FROM contracts")
+        .fetch_all(pool)
+        .await?;
 
     Ok(rows)
 }
@@ -145,27 +146,22 @@ pub async fn load_contracts(pool: &PgPool) -> Result<Vec<Contract>> {
 /// Fetch the stored hash for a given block number.
 /// Used for reorg detection.
 pub async fn get_block_hash(pool: &PgPool, block_number: u64) -> Result<Option<String>> {
-    let row = sqlx::query_scalar(
-        "SELECT hash FROM blocks WHERE number = $1"
-    )
-    .bind(block_number as i64)
-    .fetch_optional(pool)
-    .await?;
+    let row = sqlx::query_scalar("SELECT hash FROM blocks WHERE number = $1")
+        .bind(block_number as i64)
+        .fetch_optional(pool)
+        .await?;
 
     Ok(row)
 }
 
-pub async fn save_decoded_events(
-    pool: &PgPool,
-    events: &[DecodedEvent],
-) -> Result<()> {
+pub async fn save_decoded_events(pool: &PgPool, events: &[DecodedEvent]) -> Result<()> {
     for event in events {
         sqlx::query(
             "INSERT INTO decoded_events
                 (contract_address, contract_name, event_name,
                  block_number, transaction_hash, log_index, parameters)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (transaction_hash, log_index) DO NOTHING"
+             ON CONFLICT (transaction_hash, log_index) DO NOTHING",
         )
         .bind(&event.contract_address)
         .bind(&event.contract_name)
@@ -185,16 +181,16 @@ pub async fn get_decoded_events(
     pool: &PgPool,
     contract: Option<&str>,
     event_name: Option<&str>,
-    limit: i64
+    limit: i64,
 ) -> Result<Vec<DecodedEventRow>> {
-    let rows = sqlx::query_as::<_,DecodedEventRow>(
+    let rows = sqlx::query_as::<_, DecodedEventRow>(
         "SELECT contract_address, contract_name, event_name,
                 block_number, transaction_hash, log_index, parameters
          FROM decoded_events
          WHERE ($1::text IS NULL OR contract_address = $1)
            AND ($2::text IS NULL OR event_name = $2)
          ORDER BY block_number DESC, log_index DESC
-         LIMIT $3"
+         LIMIT $3",
     )
     .bind(contract)
     .bind(event_name)

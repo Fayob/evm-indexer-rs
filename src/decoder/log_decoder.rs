@@ -1,4 +1,4 @@
-use crate::decoder::abi::{compute_selector, parse_abi_events, AbiEvent, AbiParam};
+use crate::decoder::abi::{AbiEvent, AbiParam, compute_selector, parse_abi_events};
 use crate::error::{IndexerError, Result};
 use crate::rpc::types::Log;
 use crate::storage::models::Contract;
@@ -40,11 +40,7 @@ impl EventRegistry {
                 let selector = compute_selector(&event);
                 entries.insert(
                     selector,
-                    (
-                        contract.address.clone(),
-                        contract.name.clone(),
-                        event,
-                    ),
+                    (contract.address.clone(), contract.name.clone(), event),
                 );
             }
         }
@@ -64,11 +60,10 @@ impl EventRegistry {
             None => return Ok(None),
         };
 
-        let (contract_address, contract_name, event) =
-            match self.entries.get(selector) {
-                Some(entry) => entry,
-                None => return Ok(None),
-            };
+        let (contract_address, contract_name, event) = match self.entries.get(selector) {
+            Some(entry) => entry,
+            None => return Ok(None),
+        };
 
         // Only decode logs from the contract we registered.
         // A different contract could emit an event with the
@@ -96,22 +91,16 @@ fn decode_params(log: &Log, event: &AbiEvent) -> Result<Value> {
     let mut map = Map::new();
 
     // Indexed params come from topics[1..].
-    let indexed: Vec<&AbiParam> =
-        event.inputs.iter().filter(|p| p.indexed).collect();
+    let indexed: Vec<&AbiParam> = event.inputs.iter().filter(|p| p.indexed).collect();
 
     // Non-indexed params come from data.
-    let non_indexed: Vec<&AbiParam> =
-        event.inputs.iter().filter(|p| !p.indexed).collect();
+    let non_indexed: Vec<&AbiParam> = event.inputs.iter().filter(|p| !p.indexed).collect();
 
     // Decode indexed parameters from topics.
     for (i, param) in indexed.iter().enumerate() {
         // topics[0] is the selector, params start at topics[1].
         let topic = log.topics.get(i + 1).ok_or_else(|| {
-            IndexerError::LogDecode(format!(
-                "missing topic {} for param {}",
-                i + 1,
-                param.name
-            ))
+            IndexerError::LogDecode(format!("missing topic {} for param {}", i + 1, param.name))
         })?;
 
         let value = decode_topic(topic, &param.r#type)?;
@@ -125,8 +114,7 @@ fn decode_params(log: &Log, event: &AbiEvent) -> Result<Value> {
 
     let mut offset = 0;
     for param in non_indexed.iter() {
-        let (value, consumed) =
-            decode_data_param(&data_bytes, offset, &param.r#type)?;
+        let (value, consumed) = decode_data_param(&data_bytes, offset, &param.r#type)?;
         map.insert(param.name.clone(), value);
         offset += consumed;
     }
@@ -153,9 +141,9 @@ fn decode_topic(topic: &str, kind: &str) -> Result<Value> {
             // uint256 would need a big integer library.
             // We note this as a known limitation.
             let value = u128::from_be_bytes(
-                bytes[16..32].try_into().map_err(|_| {
-                    IndexerError::LogDecode("uint conversion failed".into())
-                })?,
+                bytes[16..32]
+                    .try_into()
+                    .map_err(|_| IndexerError::LogDecode("uint conversion failed".into()))?,
             );
             Ok(Value::String(value.to_string()))
         }
@@ -176,16 +164,10 @@ fn decode_topic(topic: &str, kind: &str) -> Result<Value> {
 /// This handles fixed-size types only for now.
 /// Dynamic types (string, bytes, arrays) use offset pointers
 /// in ABI encoding — we add those when a registered ABI needs them.
-fn decode_data_param(
-    data: &[u8],
-    offset: usize,
-    kind: &str,
-) -> Result<(Value, usize)> {
+fn decode_data_param(data: &[u8], offset: usize, kind: &str) -> Result<(Value, usize)> {
     // Every ABI-encoded slot is 32 bytes.
     let slot = data.get(offset..offset + 32).ok_or_else(|| {
-        IndexerError::LogDecode(format!(
-            "data too short at offset {offset} for type {kind}"
-        ))
+        IndexerError::LogDecode(format!("data too short at offset {offset} for type {kind}"))
     })?;
 
     match kind {
@@ -195,9 +177,9 @@ fn decode_data_param(
         }
         k if k.starts_with("uint") || k.starts_with("int") => {
             let value = u128::from_be_bytes(
-                slot[16..32].try_into().map_err(|_| {
-                    IndexerError::LogDecode("uint conversion failed".into())
-                })?,
+                slot[16..32]
+                    .try_into()
+                    .map_err(|_| IndexerError::LogDecode("uint conversion failed".into()))?,
             );
             Ok((Value::String(value.to_string()), 32))
         }

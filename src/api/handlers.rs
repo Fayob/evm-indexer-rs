@@ -1,9 +1,16 @@
-use axum::{Json, extract::{Query, State}, response::IntoResponse};
+use axum::{
+    Json,
+    extract::{Query, State},
+    response::IntoResponse,
+};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use crate::{error::IndexerError, storage::{db, models::{Contract}}};
+use crate::{
+    error::IndexerError,
+    storage::{db, models::Contract},
+};
 
 pub struct ApiError(IndexerError);
 
@@ -13,7 +20,7 @@ impl IntoResponse for ApiError {
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": self.0.to_string() })),
         )
-        .into_response()
+            .into_response()
     }
 }
 
@@ -46,11 +53,11 @@ pub async fn list_contracts(State(pool): State<PgPool>) -> ApiResult<impl IntoRe
         .into_iter()
         .map(|c| ContractResponse {
             address: c.address,
-            name: c.name
+            name: c.name,
         })
         .collect();
 
-        Ok(Json(response))
+    Ok(Json(response))
 }
 
 /// Request body for registering a new contract.
@@ -74,7 +81,10 @@ pub async fn register_contract(
 
     db::save_contract(&pool, &contract).await?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::json!({ "status": "registered" }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "status": "registered" })),
+    ))
 }
 
 /// Query parameters for the events endpoint.
@@ -93,10 +103,10 @@ pub async fn list_events(
     let limit = params.limit.unwrap_or(50).min(500); // Max limit of 500
 
     let rows = db::get_decoded_events(
-        &pool, 
-        params.contract.as_deref(), 
-        params.event.as_deref(), 
-        limit
+        &pool,
+        params.contract.as_deref(),
+        params.event.as_deref(),
+        limit,
     )
     .await?;
 

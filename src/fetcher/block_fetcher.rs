@@ -2,7 +2,16 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::{config::Config, decoder::log_decoder::EventRegistry, error::{IndexerError, Result}, rpc::{client::RpcClient, types::{Block, LogFilter}}, storage::db};
+use crate::{
+    config::Config,
+    decoder::log_decoder::EventRegistry,
+    error::{IndexerError, Result},
+    rpc::{
+        client::RpcClient,
+        types::{Block, LogFilter},
+    },
+    storage::db,
+};
 
 /// How often the fetcher pauses when it has caught up to the tip.
 const POLL_INTERVAL_SECS: u64 = 12;
@@ -15,12 +24,16 @@ const CONTRACT_RELOAD_INTERVAL: u64 = 10;
 pub struct BlockFetcher {
     client: RpcClient,
     pool: PgPool,
-    config: Config
+    config: Config,
 }
 
 impl BlockFetcher {
     pub fn new(client: RpcClient, pool: PgPool, config: Config) -> Self {
-        Self { client, pool, config }
+        Self {
+            client,
+            pool,
+            config,
+        }
     }
 
     /// Start the indexing loop. Runs forever until the process is killed
@@ -32,7 +45,6 @@ impl BlockFetcher {
     pub async fn run(&self) -> Result<()> {
         let mut contracts = db::load_contracts(&self.pool).await?;
         let registry = EventRegistry::from_contracts(&contracts)?;
-
 
         let start = match db::get_last_indexed_block(&self.pool).await? {
             Some(n) => {
@@ -125,11 +137,7 @@ impl BlockFetcher {
     ///
     /// A mismatch means a reorg occurred — blocks we indexed
     /// may no longer be on the canonical chain.
-    async fn check_reorg(
-        &self,
-        block: &Block,
-        current: u64,
-    ) -> Result<()> {
+    async fn check_reorg(&self, block: &Block, current: u64) -> Result<()> {
         let stored_hash = db::get_block_hash(&self.pool, current - 1).await?;
 
         if let Some(expected) = stored_hash {

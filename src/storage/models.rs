@@ -9,7 +9,6 @@ pub struct Contract {
     pub abi: serde_json::Value,
 }
 
-
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct DecodedEventRow {
     pub contract_address: String,

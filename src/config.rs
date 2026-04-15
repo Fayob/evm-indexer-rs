@@ -16,7 +16,7 @@ impl Config {
         Ok(Self {
             rpc_url: require("RPC_URL")?,
             database_url: require("DATABASE_URL")?,
-            start_block: 21000000,
+            start_block: parse(&std::env::vars().collect(), "START_BLOCK", "0")?,
             confirmation_depth: 12,
             api_port: parse(&std::env::vars().collect(), "API_PORT", "3000")?,
         })

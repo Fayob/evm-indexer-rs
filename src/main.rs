@@ -65,7 +65,8 @@ async fn main() -> error::Result<()> {
     let api_handle = tokio::spawn(async move { api::server::run(api_pool, api_port).await });
 
     tokio::try_join!(fetcher_handle, api_handle)
-        .map_err(|e| IndexerError::JoinFuture(e))?.0?;
+        .map_err(|e| IndexerError::JoinFuture(e))?
+        .0?;
 
     Ok(())
 }
